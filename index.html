@@ -1118,7 +1118,7 @@ function nights(i){return ({0:sixth==='tbilisi'?'D1·D2·D6 住':'D1·D2 住',4:
 const colors=[1,2,3,4].map(i=>'var(--viz-series-'+i+')');
 p.forEach((x,i)=>{const b=document.createElement('button');b.className='btn btn-ghost';b.type='button';b.textContent=x.n;b.onclick=()=>{focus=i;root.querySelector('#geo-detail').textContent=x.n+'｜'+(nights(i)||'途中游览')+(i===0?'｜D8 22:00 起飞':i===2?'｜生命之柱大教堂在此':i===7?'｜Didgori，暂定':'');draw()};root.querySelector('#geo-stops').appendChild(b)});
 function draw(){
-root.querySelectorAll('#geo-stops button').forEach((b,i)=>b.textContent=order(i)+' '+p[i].n+(nights(i)?' · '+nights(i):''));const w=root.clientWidth,h=w<500?380:440;svg.attr('viewBox',`0 0 ${w} ${h}`).style('height',h+'px');svg.selectAll('*').remove();
+root.querySelectorAll('#geo-stops button').forEach((b,i)=>b.textContent=order(i)+' '+p[i].n+(nights(i)?' · '+nights(i):''));const w=svg.node().clientWidth,h=w<600?340:440;svg.attr('viewBox',`0 0 ${w} ${h}`).style('height',h+'px');svg.selectAll('*').remove();
 const proj=d3.geoMercator().center([43.5,42.15]).scale((w-30)/(.115)).translate([w/2,h/2]);
 const path=d3.geoPath(proj);const defs=svg.append('defs');defs.append('clipPath').attr('id','geo-clip').append('rect').attr('width',w).attr('height',h);
 colors.forEach((c,i)=>defs.append('marker').attr('id','geo-arrow-'+i).attr('viewBox','0 -4 8 8').attr('refX',8).attr('refY',0).attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto').append('path').attr('d','M0,-3L7,0L0,3').attr('fill','none').attr('stroke',c));
@@ -1131,8 +1131,21 @@ const active=shownLegs.find(l=>l.a+'-'+l.b===activeLeg)||shownLegs[0];
 svg.append('text').attr('x',12).attr('y',22).attr('class','point-label').text(segmentName(active));
 svg.append('text').attr('x',12).attr('y',41).attr('class','point-label').text(segmentValue(active));
 shownLegs.forEach(l=>{const a=proj(p[l.a].c),b=proj(p[l.b].c),dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy),z=l.bend||0;const cx=(a[0]+b[0])/2-dy/len*z,cy=(a[1]+b[1])/2+dx/len*z;g.append('path').attr('d',`M${a}Q${cx},${cy} ${b}`).attr('fill','none').attr('stroke',colors[l.g]).attr('data-tooltip',segmentName(l)+'｜'+segmentValue(l)).attr('stroke-width',l.a+'-'+l.b===activeLeg?4:2).attr('stroke-dasharray',l.g===2?'6 4':null).attr('opacity',selected==='all'||+selected===l.g?.85:.12);const t=.62;const q=[(1-t)*(1-t)*a[0]+2*(1-t)*t*cx+t*t*b[0],(1-t)*(1-t)*a[1]+2*(1-t)*t*cy+t*t*b[1]];const r=[2*(1-t)*(cx-a[0])+2*t*(b[0]-cx),2*(1-t)*(cy-a[1])+2*t*(b[1]-cy)];g.append('path').attr('d',`M${q[0]-r[0]*.035},${q[1]-r[1]*.035}L${q}`).attr('stroke',colors[l.g]).attr('marker-end','url(#geo-arrow-'+l.g+')').attr('opacity',selected==='all'||+selected===l.g?1:.12)});
-p.forEach((x,i)=>{const q=proj(x.c),radius=i===0?27:12;const point=g.append('g').attr('transform',`translate(${q})`).attr('data-tooltip',x.info);point.append('circle').attr('r',focus===i?radius+6:radius).attr('fill','var(--background)').attr('stroke','var(--viz-series-1)').attr('stroke-width',focus===i?3:2);point.append('text').attr('text-anchor','middle').attr('dy','0.35em').style('font-size',i===0?'9px':null).text(i===0?(sixth==='tbilisi'?'1/3/10/13':'1/3/12'):order(i));if(w>=600){const lx=q[0]+x.dx,ly=q[1]+x.dy;g.append('line').attr('x1',q[0]).attr('y1',q[1]).attr('x2',lx).attr('y2',ly-4).attr('stroke','var(--border)');g.append('text').attr('class','point-label').attr('x',lx).attr('y',ly).attr('text-anchor',x.anchor||(x.dx<0?'end':'start')).text(x.n);if(i===0)g.append('text').attr('class','point-label').attr('x',lx).attr('y',ly-17).text('顺序 '+order(i));if(nights(i)){g.append('text').attr('class','point-label').attr('x',lx).attr('y',ly+17).attr('text-anchor',x.anchor||(x.dx<0?'end':'start')).text(nights(i));if(i===0)g.append('text').attr('class','point-label').attr('x',lx).attr('y',ly+34).text('D8 22:00 起飞')}}point.style('cursor','pointer').on('click',()=>{focus=i;root.querySelector('#geo-detail').textContent=x.info;draw()})});
+const pins=p.map((x,i)=>{const q=proj(x.c);return {x:q[0],y:q[1],r:i===0?30:15}});
+if(w<600){
+// Keep geographic route endpoints unchanged; only separate the numbered badges.
+for(let step=0;step<180;step++){
+for(let i=0;i<pins.length;i++)for(let j=i+1;j<pins.length;j++){
+const a=pins[i],b=pins[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.001,min=a.r+b.r+12;
+if(d<min){const ux=dx/d||1,uy=dy/d,move=(min-d)/2+.05;a.x-=ux*move;a.y-=uy*move;b.x+=ux*move;b.y+=uy*move}
 }
+pins.forEach(a=>{a.x=Math.max(a.r+8,Math.min(w-a.r-8,a.x));a.y=Math.max(a.r+68,Math.min(h-a.r-12,a.y))});
+}
+pins.forEach((a,i)=>{const q=proj(p[i].c);if(Math.hypot(a.x-q[0],a.y-q[1])>2){g.append('line').attr('x1',q[0]).attr('y1',q[1]).attr('x2',a.x).attr('y2',a.y).attr('stroke','var(--foreground)').attr('stroke-opacity',.5).attr('stroke-width',1);g.append('circle').attr('cx',q[0]).attr('cy',q[1]).attr('r',2).attr('fill','var(--foreground)')}});
+}
+p.forEach((x,i)=>{const q=w<600?[pins[i].x,pins[i].y]:proj(x.c),radius=w<600?pins[i].r:(i===0?27:12);const point=g.append('g').attr('class','map-pin').attr('data-point',i).attr('transform',`translate(${q})`).attr('data-tooltip',x.info);point.append('circle').attr('r',w<600?radius:(focus===i?radius+6:radius)).attr('fill','var(--background)').attr('stroke','var(--viz-series-1)').attr('stroke-width',focus===i?3:2);point.append('text').attr('text-anchor','middle').attr('dy','0.35em').style('font-size',i===0?(w<600?'10px':'9px'):null).text(i===0?(sixth==='tbilisi'?'1/3/10/13':'1/3/12'):order(i));if(w>=600){const lx=q[0]+x.dx,ly=q[1]+x.dy;g.append('line').attr('x1',q[0]).attr('y1',q[1]).attr('x2',lx).attr('y2',ly-4).attr('stroke','var(--border)');g.append('text').attr('class','point-label').attr('x',lx).attr('y',ly).attr('text-anchor',x.anchor||(x.dx<0?'end':'start')).text(x.n);if(i===0)g.append('text').attr('class','point-label').attr('x',lx).attr('y',ly-17).text('顺序 '+order(i));if(nights(i)){g.append('text').attr('class','point-label').attr('x',lx).attr('y',ly+17).attr('text-anchor',x.anchor||(x.dx<0?'end':'start')).text(nights(i));if(i===0)g.append('text').attr('class','point-label').attr('x',lx).attr('y',ly+34).text('D8 22:00 起飞')}}point.style('cursor','pointer').on('click',()=>{focus=i;root.querySelector('#geo-detail').textContent=x.info;draw()})});
+}
+if(window.matchMedia('(max-width:600px)').matches)root.querySelector('details').open=true;
 root.querySelector('#geo-leg').onchange=e=>{sixth=e.target.value;root.querySelector('#geo-detail').textContent=sixth==='tbilisi'?'D6：巴统 → 剑山（可删）→ 第比利斯住；D7 上山；D8 下山，22:00 起飞。':'D6：巴统 → 剑山 → 古多里 → 卡兹别克；D6、D7 连住，D6 为长途转场。';draw()};new ResizeObserver(draw).observe(root);draw();
 })();
 </script>
@@ -1487,5 +1500,17 @@ root.querySelector('#geo-leg').onchange=e=>{sixth=e.target.value;root.querySelec
 })();
 </script>
 
+<style>
+@media(max-width:600px){
+html,body{width:100%;overflow-wrap:anywhere;-webkit-text-size-adjust:100%}
+#georgia-route{min-width:0;padding:18px 12px}
+#georgia-route>h3:first-child{font-size:clamp(19px,5.6vw,24px);letter-spacing:0;line-height:1.5}
+#georgia-route .form-select{min-width:0;max-width:100%;width:100%}
+#georgia-route #geo-map{max-width:100%;touch-action:pan-y}
+#georgia-route #geo-stops{display:grid;grid-template-columns:1fr;gap:8px}
+#georgia-route #geo-stops button{width:100%;min-height:44px;text-align:left}
+#georgia-route .leg-entry{min-height:64px}
+}
+</style>
 </body>
 </html>
